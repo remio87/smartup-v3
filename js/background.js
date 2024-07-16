@@ -1870,16 +1870,16 @@ var sub = {
 		//txt
 		copytxt: function () {//chk
 			if (!sub.message.selEle.txt) { return; }
-			var theFunction = function () {
-				var clipOBJ = document.body.appendChild(document.createElement("textarea"));
-				clipOBJ.value = sub.message.selEle.txt;
-				clipOBJ.select();
-				document.execCommand('copy');
-				clipOBJ.remove();
-			}
-			var thepers = ["clipboardWrite"];
-			var theorgs;
-			sub.checkPermission(thepers, theorgs, theFunction);
+			chrome.scripting.executeScript({
+				target: { tabId: sub.getId("s_current")[0] },
+				func: () => {
+					const selected_str = document.getSelection().toString();
+					navigator.clipboard.writeText(selected_str);
+				}
+			});
+			// var thepers = ["clipboardWrite"];
+			// var theorgs;
+			// sub.checkPermission(thepers, theorgs, theFunction);
 		},
 		txtsearch: function () {//chk
 			if (!sub.message.selEle.txt) { return; }
