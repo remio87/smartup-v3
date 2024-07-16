@@ -92,7 +92,7 @@ var sue = {
 			document.addEventListener("click", this.handleEvent, false);
 		}
 		if (config.general.fnswitch.fnwges) {
-			window.addEventListener("wheel", this.handleEvent, false);
+			window.addEventListener("wheel", this.handleEvent, { passive: false });
 		}
 		if (config.general.fnswitch.fndca) {
 			window.addEventListener("dblclick", this.handleEvent, false);
@@ -135,7 +135,7 @@ var sue = {
 					}
 
 					chrome.runtime.sendMessage(extID, { type: "action_wges", sendValue: sendValue, selEle: sue.selEle })
-					// e.preventDefault();
+					e.preventDefault();
 				}
 				break;
 			case "click":
