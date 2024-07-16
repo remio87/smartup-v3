@@ -3564,8 +3564,8 @@ var suo = {
 			chrome.runtime.sendMessage({ type: "getDonateData" }, function (response) {
 				console.log(response.value);
 				suo.cons.donateData = response.value;
-				suo.donateBox.show();
-				suo.donateBox.dom(response.value);
+				// suo.donateBox.show();
+				// suo.donateBox.dom(response.value);
 			})
 		},
 		dom: function (items) {
@@ -3637,13 +3637,13 @@ var suo = {
 				domContent.appendChild(_content);
 				// return _list;
 			}
-			for (var i = 0; items.donate && items.donate[0] && items.donate[0].length > 0 && i < items.donate[0].length; i++) {
-				initDom(items.donate[0][i], i);
-			}
+			// for (var i = 0; items.donate && items.donate[0] && items.donate[0].length > 0 && i < items.donate[0].length; i++) {
+			// 	initDom(items.donate[0][i], i);
+			// }
 			let _flag = i;
-			for (var i = 0; items.ad && items.ad[0] && items.ad[0].length > 0 && i < items.ad[0].length; i++) {
-				initDom(items.ad[0][i], _flag + i);
-			}
+			// for (var i = 0; items.ad && items.ad[0] && items.ad[0].length > 0 && i < items.ad[0].length; i++) {
+			// 	initDom(items.ad[0][i], _flag + i);
+			// }
 			suo.donateBox.switch(document.querySelectorAll("#donate_list li")[0]);
 
 			//if cryptocurrency show the first one
