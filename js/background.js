@@ -3975,33 +3975,35 @@ var sub = {
 				sub.initCurrent(sender, sub.theConf)
 				break;
 			case "gettip":
-				sub.theConf = getConf();
-				let _sendConf = {};
-				_sendConf.config = sub.theConf;
-				_sendConf.type = "tip";
-				_sendConf.tip = sub.theConf.name ? (sub.theConf.mydes && sub.theConf.mydes.type && sub.theConf.mydes.value ? sub.theConf.mydes.value : sub.getI18n(sub.theConf.name)) : null;
-				_sendConf.note = sub.theConf.note;
-				_sendConf.allaction = [];
-				//get all actions
-				let _confType = config[message.drawType[0]][message.drawType[1]];
-				if (config[sub.message.drawType[0]].ui.allaction.enable) {
-					for (let i = 0; i < _confType.length; i++) {
-						if (_confType[i].direct.indexOf(message.direct) == 0
-							&& _confType[i].direct.length > message.direct.length) {
-							let _action = {
-								direct: _confType[i].direct,
-								tip: (_confType[i].mydes && _confType[i].mydes.type && _confType[i].mydes.value) ? _confType[i].mydes.value : sub.getI18n(_confType[i].name)
+				loadConfig().then(() => {
+					sub.theConf = getConf();
+					let _sendConf = {};
+					_sendConf.config = sub.theConf;
+					_sendConf.type = "tip";
+					_sendConf.tip = sub.theConf.name ? (sub.theConf.mydes && sub.theConf.mydes.type && sub.theConf.mydes.value ? sub.theConf.mydes.value : sub.getI18n(sub.theConf.name)) : null;
+					_sendConf.note = sub.theConf.note;
+					_sendConf.allaction = [];
+					//get all actions
+					let _confType = config[message.drawType[0]][message.drawType[1]];
+					if (config[sub.message.drawType[0]].ui.allaction.enable) {
+						for (let i = 0; i < _confType.length; i++) {
+							if (_confType[i].direct.indexOf(message.direct) == 0
+								&& _confType[i].direct.length > message.direct.length) {
+								let _action = {
+									direct: _confType[i].direct,
+									tip: (_confType[i].mydes && _confType[i].mydes.type && _confType[i].mydes.value) ? _confType[i].mydes.value : sub.getI18n(_confType[i].name)
+								}
+								_sendConf.allaction.push(_action);
 							}
-							_sendConf.allaction.push(_action);
-						}
-						if (i == _confType.length - 1 && _sendConf.allaction.length == 0) {
-							_sendConf.allaction = null;
+							if (i == _confType.length - 1 && _sendConf.allaction.length == 0) {
+								_sendConf.allaction = null;
+							}
 						}
 					}
-				}
-				console.log(_sendConf)
-				sendResponse(_sendConf);
-				break;
+					console.log(_sendConf)
+					sendResponse(_sendConf);
+				});
+				return true;
 			case "action_ksa":
 				sub.theConf = config.ksa.actions[sub.message.id];
 				if (sub.theConf.name == "paste") {//for action paste
@@ -4025,28 +4027,30 @@ var sub = {
 				sub.initCurrent(sender, sub.theConf);
 				break
 			case "action":
-				sub.theConf = getConf();
-				sub.theConf.type = "action";
-				if (sub.theConf.name == "paste") {//for action paste
-					sendResponse(sub.theConf);//error log, if none sendResponse
-					sub.checkPermission(["clipboardRead", "clipboardWrite"], null, function () {
-						var domCB = document.createElement("textarea");
-						domCB.classList.add("su_cb_textarea");
-						document.body.appendChild(domCB);
-						domCB.focus();
-						document.execCommand("paste");
-						sub.theConf.paste = domCB.value;
-						sub.theConf.typeAction = "paste";
-						chrome.tabs.sendMessage(sender.tab.id, { type: "actionPaste", value: sub.theConf }, function (response) {
-							domCB.remove();
+				loadConfig().then(() => {
+					sub.theConf = getConf();
+					sub.theConf.type = "action";
+					if (sub.theConf.name == "paste") {//for action paste
+						sendResponse(sub.theConf);//error log, if none sendResponse
+						sub.checkPermission(["clipboardRead", "clipboardWrite"], null, function () {
+							var domCB = document.createElement("textarea");
+							domCB.classList.add("su_cb_textarea");
+							document.body.appendChild(domCB);
+							domCB.focus();
+							document.execCommand("paste");
+							sub.theConf.paste = domCB.value;
+							sub.theConf.typeAction = "paste";
+							chrome.tabs.sendMessage(sender.tab.id, { type: "actionPaste", value: sub.theConf }, function (response) {
+								domCB.remove();
+							});
 						});
-					});
-				} else {
-					console.log("s")
-					sendResponse(sub.theConf);
-				}
-				sub.initCurrent(sender, sub.theConf);
-				break
+					} else {
+						console.log("s")
+						sendResponse(sub.theConf);
+					}
+					sub.initCurrent(sender, sub.theConf);
+				});
+				return true;
 			case "getDonateData":
 				sendResponse({ type: "donateData", value: sub.cons.donateData })
 				break;
