@@ -1323,8 +1323,8 @@ var sub={
 				//chrome.browserAction.setIcon({tabId:tab.id,path:"../image/icon_bar.png"});
 				break;
 			case"warning":
-				chrome.browserAction.setIcon({tabId:tab.id,path:"../image/icon_warning.png"});
-				chrome.browserAction.setTitle({tabId:tab.id,title:sub.getI18n("icon_tip")});
+				chrome.action.setIcon({tabId:tab.id,path:"../image/icon_warning.png"});
+				chrome.action.setTitle({tabId:tab.id,title:sub.getI18n("icon_tip")});
 				break;
 		}
 		//chrome.pageAction.show(tabId);
@@ -1367,17 +1367,26 @@ var sub={
 		},
 		//group nav
 		back:function(){//chk
-			chrome.tabs.executeScript({code:"window.history.go(-1)",runAt:"document_start"},function(){})
+			chrome.scripting.executeScript({
+				target: {tabId: sub.getId("s_current")[0]},
+				func: ()=>{window.history.go(-1);}
+			});
 		},
 		forward:function(){//chk
-			chrome.tabs.executeScript({code:"window.history.go(+1)",runAt:"document_start"},function(){})
+			chrome.scripting.executeScript({
+				target: {tabId: sub.getId("s_current")[0]},
+				func: ()=>{window.history.go(+1);}
+			});
 		},
 		scroll:function(){
 			var _effect=sub.getConfValue("checks","n_effect"),
 				_scroll=sub.getConfValue("selects","n_scroll").substr(2);
 			sub.cons.scroll.effect=_effect;
 			sub.cons.scroll.type=_scroll;//scrolltype;//sub.theConf.name;
-			chrome.tabs.executeScript({file:"js/inject/scroll.js",runAt:"document_start",allFrames:true},function(){})
+			chrome.scripting.executeScript({
+				target: {tabId: sub.getId("s_current")[0], allFrames: true},
+				files:["js/inject/scroll.js"]
+			});
 		},
 		reload:function(){//chk
 			var ids=sub.getId(sub.getConfValue("selects","n_tab"));
@@ -4830,41 +4839,41 @@ if(chrome.browserSettings&&chrome.browserSettings.contextMenuShowEvent){
 	localStorage.setItem("flag_mouseup","true");
 }
 
-getDonate=()=>{
-	let localType=navigator.language,
-		_url="https://apis.zimoapps.com/su";
-		// _url="http://172.30.246.4:1024/su";
-	localType=localType.replace("-","_");
-	fetch(_url,{
-		method:"GET",
-		cache:"no-cache"
-	}).then(response=>response.json())
-	.then(response=>{
-		let data={
-			donate:[],
-			ad:[]
-		}
-		if(response[0]&&response[0]["on"]&&response[0].donate[0][localType]){
-			data.donate.push(response[0].donate[0][localType]);
-		}else{
-			if(response[0].donate[0]["default"]){
-				data.donate.push(response[0].donate[0]["default"]);
-			}else{
-				data.donate.length=0;
-			}
-		}
-		if(response[1]&&response[1]["on"]&&response[1].ad[0][localType]){
-			data.ad.push(response[1].ad[0][localType]);
-		}else{
-			if(response[1].ad[0]["default"]){
-				data.ad.push(response[1].ad[0]["default"]);
-			}else{
-				data.ad.length=0;
-			}
-		}
-		sub.cons.donateData=data;
-		console.log(sub.cons.donateData);
-	})
-}
-getDonate();
+// getDonate=()=>{
+// 	let localType=navigator.language,
+// 		_url="https://apis.zimoapps.com/su";
+// 		// _url="http://172.30.246.4:1024/su";
+// 	localType=localType.replace("-","_");
+// 	fetch(_url,{
+// 		method:"GET",
+// 		cache:"no-cache"
+// 	}).then(response=>response.json())
+// 	.then(response=>{
+// 		let data={
+// 			donate:[],
+// 			ad:[]
+// 		}
+// 		if(response[0]&&response[0]["on"]&&response[0].donate[0][localType]){
+// 			data.donate.push(response[0].donate[0][localType]);
+// 		}else{
+// 			if(response[0].donate[0]["default"]){
+// 				data.donate.push(response[0].donate[0]["default"]);
+// 			}else{
+// 				data.donate.length=0;
+// 			}
+// 		}
+// 		if(response[1]&&response[1]["on"]&&response[1].ad[0][localType]){
+// 			data.ad.push(response[1].ad[0][localType]);
+// 		}else{
+// 			if(response[1].ad[0]["default"]){
+// 				data.ad.push(response[1].ad[0]["default"]);
+// 			}else{
+// 				data.ad.length=0;
+// 			}
+// 		}
+// 		sub.cons.donateData=data;
+// 		console.log(sub.cons.donateData);
+// 	})
+// }
+// getDonate();
 console.log("end")
