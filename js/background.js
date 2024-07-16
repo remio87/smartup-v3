@@ -840,8 +840,9 @@ let loadLocalConfig = function () {
 	})
 }
 let loadConfig = async function (noInit, type) {
-	function needInit() {
+	async function needInit() {
 		//if(!config.version){config.version=37;}
+		await chrome.storage.local.set({ "config_local": config });
 		sub.init();
 		return;
 		if (noInit) {
@@ -872,7 +873,7 @@ let loadConfig = async function (noInit, type) {
 		} else {
 			config = items;
 		}
-		needInit();
+		await needInit();
 		//sub.init();
 	} else {
 		const items = await chrome.storage.local.get(null);
@@ -891,10 +892,19 @@ let loadConfig = async function (noInit, type) {
 				config = items.config;
 			}
 		}
-		needInit();
+		await needInit();
 		//sub.init();
 	}
 }
+let loadConfigFromLocalStorage = function () {
+	chrome.storage.local.get("config_local").then(configLocal => {
+		config = configLocal;
+		console.log("config loaded from local storage");
+	}).catch(err => {
+		console.error("error loading config from local storage", err);
+	});
+}
+
 
 var appConfmodel = {
 	rss: { feed: ["https://www.cnet.com/rss/news/"], n_optype: "s_back", n_position: "s_default", n_pin: false, n_closebox: false },
@@ -3779,6 +3789,10 @@ var sub = {
 			case "evt_getconf":
 			case "pop_getconf":
 			case "opt_getconf":
+				if (config == null) {
+					console.log("config is null. Loading from the local storage...")
+					loadConfigFromLocalStorage();
+				}
 				let _conf = {
 					type: message.type,
 					defaultConf: defaultConf,
@@ -4774,57 +4788,59 @@ else {
 	})
 }
 
-chrome.contextMenus.onClicked.addListener(function (info, tab) {
-	sub.CTMclick(info, tab);
-})
-chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-	console.log(tabId);
-	sub.setIcon("normal", tabId, changeInfo, tab);
-	if (changeInfo.status == "complete") {
-		chrome.tabs.sendMessage(tabId, { type: "status" }, function (response) {
-			if (!response) {
-				sub.setIcon("warning", tabId, changeInfo, tab);
-			}
-		});
-	}
-
-	// get factor for action zoom
-	chrome.tabs.getZoom(tabId, function (zoomFactor) {
-		if (!sub.temp.zoom[tabId]) {
-			sub.temp.zoom[tabId] = zoomFactor;
-		} else {
-			sub.temp.zoom[tabId] = zoomFactor;
-		}
+loadConfig().then(_ => {
+	chrome.contextMenus.onClicked.addListener(function (info, tab) {
+		sub.CTMclick(info, tab);
 	})
+	chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+		console.log(tabId);
+		sub.setIcon("normal", tabId, changeInfo, tab);
+		if (changeInfo.status == "complete") {
+			chrome.tabs.sendMessage(tabId, { type: "status" }, function (response) {
+				if (!response) {
+					sub.setIcon("warning", tabId, changeInfo, tab);
+				}
+			});
+		}
 
-})
-chrome.tabs.onRemoved.addListener(function (tabId) {
-	if (sub.cons.autoreload && sub.cons.autoreload[tabId]) {
-		window.clearInterval(sub.cons.autoreload[tabId].timer);
-		window.clearInterval(sub.cons.autoreload[tabId].countDown);
-	}
-	//(sub.cons.autoreload&&sub.cons.autoreload[tabId])?window.clearInterval(sub.cons.autoreload[tabId]):null;
-})
-chrome.runtime.onMessageExternal.addListener(function (message, sender, sendResponse) {
-	sub.funOnMessage(message, sender, sendResponse);
-})
-chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
-	sub.funOnMessage(message, sender, sendResponse);
+		// get factor for action zoom
+		chrome.tabs.getZoom(tabId, function (zoomFactor) {
+			if (!sub.temp.zoom[tabId]) {
+				sub.temp.zoom[tabId] = zoomFactor;
+			} else {
+				sub.temp.zoom[tabId] = zoomFactor;
+			}
+		})
+
+	})
+	chrome.tabs.onRemoved.addListener(function (tabId) {
+		if (sub.cons.autoreload && sub.cons.autoreload[tabId]) {
+			window.clearInterval(sub.cons.autoreload[tabId].timer);
+			window.clearInterval(sub.cons.autoreload[tabId].countDown);
+		}
+		//(sub.cons.autoreload&&sub.cons.autoreload[tabId])?window.clearInterval(sub.cons.autoreload[tabId]):null;
+	})
+	chrome.runtime.onMessageExternal.addListener(function (message, sender, sendResponse) {
+		sub.funOnMessage(message, sender, sendResponse);
+	})
+	chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+		sub.funOnMessage(message, sender, sendResponse);
+	});
+	chrome.runtime.onConnect.addListener(function (port) {
+		switch (port.name) {
+			case "fn_copyimg":
+				port.onMessage.addListener(async function (msg) {
+					var _img = await fetch(sub.message.selEle.img);
+					_img = await _img.blob();
+					_img = await URL.createObjectURL(_img);
+					console.log(_img);
+					port.postMessage(_img);
+				})
+				break;
+		}
+	});
 });
-chrome.runtime.onConnect.addListener(function (port) {
-	switch (port.name) {
-		case "fn_copyimg":
-			port.onMessage.addListener(async function (msg) {
-				var _img = await fetch(sub.message.selEle.img);
-				_img = await _img.blob();
-				_img = await URL.createObjectURL(_img);
-				console.log(_img);
-				port.postMessage(_img);
-			})
-			break;
-	}
-});
-loadConfig();
+
 //browsersettings
 if (chrome.browserSettings && chrome.browserSettings.contextMenuShowEvent) {
 	browser.browserSettings.contextMenuShowEvent.set({ value: "mouseup" });
