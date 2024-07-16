@@ -1,3 +1,5 @@
+console.log("background.js loaded");
+
 Array.prototype.contains=function (ele) {
     for (var i=0;i<this.length;i++){
         if (this[i]==ele){
@@ -850,14 +852,14 @@ let loadConfig=function(noInit,type){
 	}
 	if(!type){
 		if(chrome.storage.sync){
-			if(localStorage.getItem("sync")==null){
-				localStorage.setItem("sync","true");
+			if(chrome.storage.local.get("sync")==null){
+				chrome.storage.local.set({"sync":"true"});
 				type="sync";
 			}else{
-				type=localStorage.getItem("sync")=="true"?"sync":"local";
+				type=chrome.storage.local.get("sync")=="true"?"sync":"local";
 			}
 		}else{
-			localStorage.setItem("sync","false");
+			chrome.storage.local.set({"sync":"false"});
 			type="local";
 		}
 	}
@@ -930,7 +932,7 @@ var sub={
 		fullstate:null,
 		per_write:false,
 		scroll:{},
-		crversion:(window.navigator.userAgent.substr(window.navigator.userAgent.indexOf("Chrome")+7,100).substr(0,window.navigator.userAgent.substr(window.navigator.userAgent.indexOf("Chrome")+7,100).indexOf(" "))),
+		// crversion:(window.navigator.userAgent.substr(window.navigator.userAgent.indexOf("Chrome")+7,100).substr(0,window.navigator.userAgent.substr(window.navigator.userAgent.indexOf("Chrome")+7,100).indexOf(" "))),
 		permissions:{},
 		os:"win"
 	},
@@ -971,13 +973,13 @@ var sub={
 	},
 	initIcon:function(){
 		if(config.general.fnswitch.fnicon){
-			chrome.browserAction.setPopup({popup:""});
+			chrome.action.setPopup({popup:""});
 			if(config.icon.settings.tip){
-				chrome.browserAction.setTitle({title:config.icon.actions[0].mydes&&config.icon.actions[0].mydes.type&&config.icon.actions[0].mydes.value?config.icon.actions[0].mydes.value:sub.getI18n(config.icon.actions[0].name)});
+				chrome.action.setTitle({title:config.icon.actions[0].mydes&&config.icon.actions[0].mydes.type&&config.icon.actions[0].mydes.value?config.icon.actions[0].mydes.value:sub.getI18n(config.icon.actions[0].name)});
 			}
 		}else{
-			chrome.browserAction.setPopup({popup:"../html/popup.html"});
-			chrome.browserAction.setTitle({title:sub.getI18n("ext_name")});
+			chrome.action.setPopup({popup:"../html/popup.html"});
+			chrome.action.setTitle({title:sub.getI18n("ext_name")});
 		}
 	},
 	initCTM:function(){
@@ -4654,7 +4656,7 @@ var sub={
 	}
 }
 
-chrome.browserAction.onClicked.addListener(function(tab){
+chrome.action.onClicked.addListener(function(tab){
 	if(config.icon.settings.type=="back"){
 		//sub.extID=chrome.runtime.id?chrome.runtime.id:null;
 		var theConf=config.icon.actions[0];
@@ -4692,7 +4694,9 @@ else{
 		chrome.windows.getAll({populate:true},function(windows){
 			for(var i=0;i<windows.length;i++){
 				for(var ii=0;ii<windows[i].tabs.length;ii++){
-					chrome.tabs.executeScript(windows[i].tabs[ii].id,{file:"js/event.js",runAt:"document_start",allFrames:true})
+					chrome.scripting.executeScript({
+						target: {tabId: windows[i].tabs[ii].id, allFrames: true},
+						files: ["js/event.js"]})
 				}
 			}
 		})
