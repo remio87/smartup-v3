@@ -839,7 +839,7 @@ let loadLocalConfig = function () {
 		localConfig = items.local;
 	})
 }
-let loadConfig = function (noInit, type) {
+let loadConfig = async function (noInit, type) {
 	function needInit() {
 		//if(!config.version){config.version=37;}
 		sub.init();
@@ -852,48 +852,47 @@ let loadConfig = function (noInit, type) {
 	}
 	if (!type) {
 		if (chrome.storage.sync) {
-			if (chrome.storage.local.get("sync") == null) {
-				chrome.storage.local.set({ "sync": "true" });
+			const is_sync = await chrome.storage.local.get("sync")["sync"];
+			if (is_sync == null) {
+				await chrome.storage.local.set({ "sync": "true" });
 				type = "sync";
 			} else {
-				type = chrome.storage.local.get("sync") == "true" ? "sync" : "local";
+				type = is_sync == "true" ? "sync" : "local";
 			}
 		} else {
-			chrome.storage.local.set({ "sync": "false" });
+			await chrome.storage.local.set({ "sync": "false" });
 			type = "local";
 		}
 	}
 	if (type == "sync") {
-		chrome.storage.sync.get(function (items) {
-			if (!items.general) {
-				config = getDefault.value();
-				chrome.storage.sync.set(config, function () { });
-			} else {
-				config = items;
-			}
-			needInit();
-			//sub.init();
-		});
+		const items = await chrome.storage.sync.get(null);
+		if (!items.general) {
+			config = getDefault.value();
+			await chrome.storage.sync.set(config);
+		} else {
+			config = items;
+		}
+		needInit();
+		//sub.init();
 	} else {
-		chrome.storage.local.get(function (items) {
-			if (items.version && items.version < 41) {//for old version
-				console.log("old")
-				config = items;
+		const items = await chrome.storage.local.get(null);
+		if (items.version && items.version < 41) {//for old version
+			console.log("old")
+			config = items;
+		} else {
+			if (!items.config) {
+				let _obj = {};
+				config = getDefault.value();
+				_obj.config = config;
+				await chrome.storage.local.set(_obj, function () {
+					console.log("set defaultConfig to local")
+				});
 			} else {
-				if (!items.config) {
-					let _obj = {};
-					config = getDefault.value();
-					_obj.config = config;
-					chrome.storage.local.set(_obj, function () {
-						console.log("set defaultConfig to local")
-					});
-				} else {
-					config = items.config;
-				}
+				config = items.config;
 			}
-			needInit();
-			//sub.init();
-		});
+		}
+		needInit();
+		//sub.init();
 	}
 }
 
@@ -2883,7 +2882,7 @@ var sub = {
 			sub.cons.origins = pers.origins;
 		});
 	},
-	saveConf: function (noInit, sendResponse) {
+	saveConf: async function (noInit, sendResponse) {
 		console.log("save");
 		console.log(config);
 		let _isSync;
@@ -2892,35 +2891,29 @@ var sub = {
 		} else {
 			_isSync = false;
 		}
-		_isSync ? localStorage.setItem("sync", "true") : localStorage.setItem("sync", "false");
+		_isSync ? await chrome.storage.local.set({ "sync": "true" }) : await chrome.storage.local.set({ "sync": "false" });
 		if (_isSync) {
-			chrome.storage.sync.clear(function () {
-				chrome.storage.sync.set(config, function () {
-					if (chrome.runtime.lastError) {
-						sub.showNotif("basic", sub.getI18n("notif_title_conferr"), sub.getI18n("msg_conferr0") + "\n" + chrome.runtime.lastError.message + "\n" + sub.getI18n("msg_conferr1"));
-						sub.cons.lastErr = chrome.runtime.lastError.message;
-						chrome.storage.sync.set(sub.cons.lastConf, function () {
-							loadConfig();
-							chrome.runtime.sendMessage({ type: "confErr", lastErr: sub.cons.lastErr })
-						});
-					} else {
-						loadConfig();
-						chrome.runtime.sendMessage({ type: "confOK" });
-					}
-				})
-			})
+			await chrome.storage.sync.clear();
+			await chrome.storage.sync.set(config);
+			if (chrome.runtime.lastError) {
+				sub.showNotif("basic", sub.getI18n("notif_title_conferr"), sub.getI18n("msg_conferr0") + "\n" + chrome.runtime.lastError.message + "\n" + sub.getI18n("msg_conferr1"));
+				sub.cons.lastErr = chrome.runtime.lastError.message;
+				await chrome.storage.sync.set(sub.cons.lastConf);
+				await loadConfig();
+				chrome.runtime.sendMessage({ type: "confErr", lastErr: sub.cons.lastErr })
+			} else {
+				await loadConfig();
+				chrome.runtime.sendMessage({ type: "confOK" });
+			}
 		} else {
-			chrome.storage.local.get(function (items) {
-				let _obj = {};
-				_obj.config = config;
-				_obj.localConfig = items.localConfig;
-				chrome.storage.local.clear(function () {
-					chrome.storage.local.set(_obj, function () {
-						loadConfig();
-						chrome.runtime.sendMessage({ type: "confOK" });
-					})
-				})
-			})
+			const items = await chrome.storage.local.get(null)
+			let _obj = {};
+			_obj.config = config;
+			_obj.localConfig = items.localConfig;
+			await chrome.storage.local.clear();
+			await chrome.storage.local.set(_obj);
+			await loadConfig();
+			chrome.runtime.sendMessage({ type: "confOK" });
 		}
 		//_isSync?localStorage.setItem("sync","true"):localStorage.setItem("sync","false");
 	},
