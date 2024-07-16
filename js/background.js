@@ -30,6 +30,7 @@ var config,
 	browserType,
 	timerSaveConf;
 let localConfig;
+let configLoaded = false;
 
 //check browser
 if (navigator.userAgent.toLowerCase().indexOf("firefox") != -1) {
@@ -840,6 +841,9 @@ let loadLocalConfig = function () {
 	})
 }
 let loadConfig = async function (noInit, type) {
+	if (configLoaded === true) {
+		return;
+	}
 	async function needInit() {
 		//if(!config.version){config.version=37;}
 		await chrome.storage.local.set({ "config_local": config });
@@ -895,10 +899,28 @@ let loadConfig = async function (noInit, type) {
 		await needInit();
 		//sub.init();
 	}
+	configLoaded = true;
+}
+let reloadConfig = async function () {
+	configLoaded = false;
+	await loadConfig();
 }
 let loadConfigFromLocalStorage = function () {
-	chrome.storage.local.get("config_local").then(configLocal => {
-		config = configLocal;
+
+	const loadFromLocalLog = {
+		message: "loadConfigFromLocalStorage called",
+		time: new Date().toISOString()
+	};
+
+	chrome.storage.local.get("loadConfigFromLocalStorageLogs").then(result => {
+		const existingLogs = (result.loadConfigFromLocalStorageLogs == undefined) ? [] : result.loadConfigFromLocalStorageLogs;
+		console.log(existingLogs);
+		existingLogs.push(loadFromLocalLog);
+		chrome.storage.local.set({ loadConfigFromLocalStorageLogs: existingLogs });
+	});
+
+	chrome.storage.local.get("config_local").then(result => {
+		config = result["config_local"];
 		console.log("config loaded from local storage");
 	}).catch(err => {
 		console.error("error loading config from local storage", err);
@@ -2909,10 +2931,10 @@ var sub = {
 				sub.showNotif("basic", sub.getI18n("notif_title_conferr"), sub.getI18n("msg_conferr0") + "\n" + chrome.runtime.lastError.message + "\n" + sub.getI18n("msg_conferr1"));
 				sub.cons.lastErr = chrome.runtime.lastError.message;
 				await chrome.storage.sync.set(sub.cons.lastConf);
-				await loadConfig();
+				await reloadConfig();
 				chrome.runtime.sendMessage({ type: "confErr", lastErr: sub.cons.lastErr })
 			} else {
-				await loadConfig();
+				await reloadConfig();
 				chrome.runtime.sendMessage({ type: "confOK" });
 			}
 		} else {
@@ -2922,7 +2944,7 @@ var sub = {
 			_obj.localConfig = items.localConfig;
 			await chrome.storage.local.clear();
 			await chrome.storage.local.set(_obj);
-			await loadConfig();
+			await reloadConfig();
 			chrome.runtime.sendMessage({ type: "confOK" });
 		}
 		//_isSync?localStorage.setItem("sync","true"):localStorage.setItem("sync","false");
@@ -3789,22 +3811,27 @@ var sub = {
 			case "evt_getconf":
 			case "pop_getconf":
 			case "opt_getconf":
-				if (config == null) {
-					console.log("config is null. Loading from the local storage...")
-					loadConfigFromLocalStorage();
-				}
-				let _conf = {
-					type: message.type,
-					defaultConf: defaultConf,
-					config: config,
-					devMode: devMode,
-					os: sub.cons.os,
-					donateData: sub.cons.donateData,
-					reason: sub.cons.reason
-				}
-				message.type === "opt_getconf" ? sub.cons.reason = "update" : null;
-				sendResponse(_conf);
-				break;
+				// TODO: remove if unnecessary
+				// if (config == null) {
+				// 	console.log("config is null. Loading from the local storage...")
+				// 	loadConfigFromLocalStorage();
+				// }
+				loadConfig().then(() => {
+					let _conf = {
+						type: message.type,
+						defaultConf: defaultConf,
+						config: config,
+						devMode: devMode,
+						os: sub.cons.os,
+						donateData: sub.cons.donateData,
+						reason: sub.cons.reason
+					}
+					message.type === "opt_getconf" ? sub.cons.reason = "update" : null;
+					sendResponse(_conf);
+				}).catch((e) => {
+					console.error(`Failed to load config in event listener: ${e}`);
+				});
+				return true; // notifying the response is asyncronous
 			case "opt_getpers":
 				sub.checkPermission(message.value.thepers, message.value.theorgs, message.value.theFunction, message.value.msg);
 				break;
@@ -3870,7 +3897,7 @@ var sub = {
 				break;
 			case "reloadconf":
 				config = message.value;
-				loadConfig();
+				reloadConfig();
 				break;
 			case "saveConf":
 				sub.cons.lastConf = config;
@@ -4028,6 +4055,7 @@ var sub = {
 				//sub.appsAction(message,sendResponse);
 				break;
 		}
+		return false; // notifying the response is syncronous
 	},
 	appsAction: function (message, sendResponse) {
 		sub.apps[message.app][message.action](message, sendResponse);
@@ -4823,8 +4851,31 @@ chrome.runtime.onMessageExternal.addListener(function (message, sender, sendResp
 	sub.funOnMessage(message, sender, sendResponse);
 })
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
-	sub.funOnMessage(message, sender, sendResponse);
+	try {
+		const needsAsyncResponse = sub.funOnMessage(message, sender, sendResponse);
+		return needsAsyncResponse;
+	} catch (e) {
+		console.error(e.message);
+		saveErrorToStorage(e, message, sender);
+		sendResponse(undefined);
+	}
 });
+// for debugging... log error to local storage
+function saveErrorToStorage(error, message, sender) {
+	const errorLog = {
+		orig_msg: message,
+		orig_sender: sender,
+		err_message: error.message,
+		stack: error.stack,
+		time: new Date().toISOString()
+	};
+	chrome.storage.local.get("errorLogs").then(result => {
+		const existingLogs = (result.errorLogs == undefined) ? [] : result.errorLogs;
+		console.log(existingLogs);
+		existingLogs.push(errorLog);
+		chrome.storage.local.set({ errorLogs: existingLogs });
+	});
+}
 chrome.runtime.onConnect.addListener(function (port) {
 	switch (port.name) {
 		case "fn_copyimg":
@@ -4839,7 +4890,11 @@ chrome.runtime.onConnect.addListener(function (port) {
 	}
 });
 
-loadConfig();
+try {
+	loadConfig();
+} catch (err) {
+	console.error(`Failed to Load configuration at initialization: ${err.message}`);
+}
 
 //browsersettings
 if (chrome.browserSettings && chrome.browserSettings.contextMenuShowEvent) {
