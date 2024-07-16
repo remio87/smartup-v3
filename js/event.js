@@ -47,7 +47,7 @@ var sue={
 	},
 	init:function(){
 		!devMode && (console.log = () => {});
-
+		
 		if (config.general.exclusion?.exclusion && sue.exclusionMatch(config.general.exclusion.exclusiontype)) {
 			console.log("dddd");
 			return;
@@ -1095,11 +1095,14 @@ chrome.runtime.onMessage.addListener(function(message,sender,sendResponse) {
 			break;
 	}
 });
-chrome.runtime.sendMessage(extID,{type:"evt_getconf"},function(response){
-	if(response){
-		config=response.config;
-		devMode=response.devMode;
-		sue.cons.os=response.os;
+
+chrome.runtime.sendMessage({ type: "evt_getconf" })
+	.then((response) => {
+		config = response.config;
+		devMode = response.devMode;
+		sue.cons.os = response.os;
 		sue.init();
-	}
-});
+	})
+	.catch((error) => {
+		console.error(`smartup failed to get configure: ${error}`);
+	});
