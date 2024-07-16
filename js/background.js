@@ -4788,58 +4788,58 @@ else {
 	})
 }
 
-loadConfig().then(_ => {
-	chrome.contextMenus.onClicked.addListener(function (info, tab) {
-		sub.CTMclick(info, tab);
-	})
-	chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-		console.log(tabId);
-		sub.setIcon("normal", tabId, changeInfo, tab);
-		if (changeInfo.status == "complete") {
-			chrome.tabs.sendMessage(tabId, { type: "status" }, function (response) {
-				if (!response) {
-					sub.setIcon("warning", tabId, changeInfo, tab);
-				}
-			});
-		}
-
-		// get factor for action zoom
-		chrome.tabs.getZoom(tabId, function (zoomFactor) {
-			if (!sub.temp.zoom[tabId]) {
-				sub.temp.zoom[tabId] = zoomFactor;
-			} else {
-				sub.temp.zoom[tabId] = zoomFactor;
+chrome.contextMenus.onClicked.addListener(function (info, tab) {
+	sub.CTMclick(info, tab);
+})
+chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+	console.log(tabId);
+	sub.setIcon("normal", tabId, changeInfo, tab);
+	if (changeInfo.status == "complete") {
+		chrome.tabs.sendMessage(tabId, { type: "status" }, function (response) {
+			if (!response) {
+				sub.setIcon("warning", tabId, changeInfo, tab);
 			}
-		})
+		});
+	}
 
-	})
-	chrome.tabs.onRemoved.addListener(function (tabId) {
-		if (sub.cons.autoreload && sub.cons.autoreload[tabId]) {
-			window.clearInterval(sub.cons.autoreload[tabId].timer);
-			window.clearInterval(sub.cons.autoreload[tabId].countDown);
+	// get factor for action zoom
+	chrome.tabs.getZoom(tabId, function (zoomFactor) {
+		if (!sub.temp.zoom[tabId]) {
+			sub.temp.zoom[tabId] = zoomFactor;
+		} else {
+			sub.temp.zoom[tabId] = zoomFactor;
 		}
-		//(sub.cons.autoreload&&sub.cons.autoreload[tabId])?window.clearInterval(sub.cons.autoreload[tabId]):null;
 	})
-	chrome.runtime.onMessageExternal.addListener(function (message, sender, sendResponse) {
-		sub.funOnMessage(message, sender, sendResponse);
-	})
-	chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
-		sub.funOnMessage(message, sender, sendResponse);
-	});
-	chrome.runtime.onConnect.addListener(function (port) {
-		switch (port.name) {
-			case "fn_copyimg":
-				port.onMessage.addListener(async function (msg) {
-					var _img = await fetch(sub.message.selEle.img);
-					_img = await _img.blob();
-					_img = await URL.createObjectURL(_img);
-					console.log(_img);
-					port.postMessage(_img);
-				})
-				break;
-		}
-	});
+
+})
+chrome.tabs.onRemoved.addListener(function (tabId) {
+	if (sub.cons.autoreload && sub.cons.autoreload[tabId]) {
+		window.clearInterval(sub.cons.autoreload[tabId].timer);
+		window.clearInterval(sub.cons.autoreload[tabId].countDown);
+	}
+	//(sub.cons.autoreload&&sub.cons.autoreload[tabId])?window.clearInterval(sub.cons.autoreload[tabId]):null;
+})
+chrome.runtime.onMessageExternal.addListener(function (message, sender, sendResponse) {
+	sub.funOnMessage(message, sender, sendResponse);
+})
+chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+	sub.funOnMessage(message, sender, sendResponse);
 });
+chrome.runtime.onConnect.addListener(function (port) {
+	switch (port.name) {
+		case "fn_copyimg":
+			port.onMessage.addListener(async function (msg) {
+				var _img = await fetch(sub.message.selEle.img);
+				_img = await _img.blob();
+				_img = await URL.createObjectURL(_img);
+				console.log(_img);
+				port.postMessage(_img);
+			})
+			break;
+	}
+});
+
+loadConfig();
 
 //browsersettings
 if (chrome.browserSettings && chrome.browserSettings.contextMenuShowEvent) {
