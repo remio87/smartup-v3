@@ -3811,11 +3811,6 @@ var sub = {
 			case "evt_getconf":
 			case "pop_getconf":
 			case "opt_getconf":
-				// TODO: remove if unnecessary
-				// if (config == null) {
-				// 	console.log("config is null. Loading from the local storage...")
-				// 	loadConfigFromLocalStorage();
-				// }
 				loadConfig().then(() => {
 					let _conf = {
 						type: message.type,
@@ -4871,7 +4866,7 @@ function saveErrorToStorage(error, message, sender) {
 		orig_sender: sender,
 		err_message: error.message,
 		stack: error.stack,
-		time: new Date().toISOString()
+		time: new Date().toString()
 	};
 	chrome.storage.local.get("errorLogs").then(result => {
 		const existingLogs = (result.errorLogs == undefined) ? [] : result.errorLogs;
