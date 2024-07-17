@@ -3885,8 +3885,10 @@ var sub = {
 				sendResponse(sub.cons[message.apptype]);
 				break;
 			case "apps_getvalue":
-				sendResponse({ type: message.apptype, config: config.apps[message.apptype], value: sub.cons[message.apptype] })
-				break;
+				loadConfig().then(() => {
+					sendResponse({ type: message.apptype, config: config.apps[message.apptype], value: sub.cons[message.apptype] })
+				});
+				return true;
 			case "action_np":
 				sub.action.next();
 				break;
@@ -3895,10 +3897,12 @@ var sub = {
 				reloadConfig();
 				break;
 			case "saveConf":
-				sub.cons.lastConf = config;
-				config = message.value;
-				sub.saveConf(true, sendResponse);
-				break;
+				loadConfig().then(() => {
+					sub.cons.lastConf = config;
+					config = message.value;
+					sub.saveConf(true, sendResponse);
+				});
+				return true;
 			case "per_clear":
 				sub.cons.permissions = {};
 				break;
@@ -3912,63 +3916,71 @@ var sub = {
 				sendResponse({ value: sub.cons.zoom });
 				break;
 			case "action_pop":
-				let _index = message.index;
+				loadConfig().then(() => {
+					let _index = message.index;
 					/*theConf=config.pop.actions[_index]*/; //message.popvalue;
-				sub.theConf = config.pop.actions[_index];
-				if (config.pop.settings.type == "front") {
-					chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-						sub.curTab = tabs[0];
-						chrome.tabs.sendMessage(tabs[0].id, { type: "pop" }, function (response) {
-							if (response && response.type == "action_pop") {
-								sub.message = response;
-								sub.extID = chrome.runtime.id ? chrome.runtime.id : null;
-								sub.initCurrent(null, sub.theConf);
-								console.log(sub.message)
-							}
-						});
-					})
-				} else {
-					sub.initCurrent(sender, sub.theConf);
-				}
-				//set last as default
-				if (_index !== 0 && config.pop.settings.last) {
-					config.pop.actions[_index] = config.pop.actions[0];
-					config.pop.actions[0] = sub.theConf;
-					sub.saveConf();
-				}
-				break;
+					sub.theConf = config.pop.actions[_index];
+					if (config.pop.settings.type == "front") {
+						chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+							sub.curTab = tabs[0];
+							chrome.tabs.sendMessage(tabs[0].id, { type: "pop" }, function (response) {
+								if (response && response.type == "action_pop") {
+									sub.message = response;
+									sub.extID = chrome.runtime.id ? chrome.runtime.id : null;
+									sub.initCurrent(null, sub.theConf);
+									console.log(sub.message)
+								}
+							});
+						})
+					} else {
+						sub.initCurrent(sender, sub.theConf);
+					}
+					//set last as default
+					if (_index !== 0 && config.pop.settings.last) {
+						config.pop.actions[_index] = config.pop.actions[0];
+						config.pop.actions[0] = sub.theConf;
+						sub.saveConf();
+					}
+				});
+				return true;
 			case "action_rges":
-				let rgesType = message.sendValue.buttons == 1 ? 0 : 1;
+				loadConfig().then(() => {
+					let rgesType = message.sendValue.buttons == 1 ? 0 : 1;
 					/*theConf=config.rges.actions[rgesType]*/;
-				sub.theConf = config.rges.actions[rgesType];
-				sub.initCurrent(sender, sub.theConf);
-				break;
+					sub.theConf = config.rges.actions[rgesType];
+					sub.initCurrent(sender, sub.theConf);
+				});
+				return true;
 			case "action_wges":
-				let _id;
-				if (message.sendValue.buttons == 1) {
-					if (message.sendValue.wheelDelta < 0) { _id = 0; } else { _id = 1 }
-				} else if (message.sendValue.buttons == 2) {
-					if (message.sendValue.wheelDelta < 0) { _id = 2; } else (_id = 3)
-				}
-				sub.theConf = config.wges.actions[_id];
-				if (sub.theConf.name == "scroll") {//fix action scrollame});
-					window.setTimeout(function () {
-						sub.initCurrent(sender, sub.theConf);
-					}, 200)
-					return
-				}
-				sub.initCurrent(sender, sub.theConf)
-				break;
+				loadConfig().then(() => {
+					let _id;
+					if (message.sendValue.buttons == 1) {
+						if (message.sendValue.wheelDelta < 0) { _id = 0; } else { _id = 1 }
+					} else if (message.sendValue.buttons == 2) {
+						if (message.sendValue.wheelDelta < 0) { _id = 2; } else (_id = 3)
+					}
+					sub.theConf = config.wges.actions[_id];
+					if (sub.theConf.name == "scroll") {//fix action scrollame});
+						window.setTimeout(function () {
+							sub.initCurrent(sender, sub.theConf);
+						}, 200)
+						return
+					}
+					sub.initCurrent(sender, sub.theConf)
+				});
+				return true;
 			case "action_dca":
-				sub.theConf = config.dca.actions[0];
-				if (sub.theConf.name == "scroll") {//fix action scrollame});
-					window.setTimeout(function () {
-						sub.initCurrent(sender, sub.theConf);
-					}, 200)
-					return
-				}
-				sub.initCurrent(sender, sub.theConf)
-				break;
+				loadConfig().then(() => {
+					sub.theConf = config.dca.actions[0];
+					if (sub.theConf.name == "scroll") {//fix action scrollame});
+						window.setTimeout(function () {
+							sub.initCurrent(sender, sub.theConf);
+						}, 200)
+						return
+					}
+					sub.initCurrent(sender, sub.theConf)
+				});
+				return true;
 			case "gettip":
 				loadConfig().then(() => {
 					sub.theConf = getConf();
@@ -4000,27 +4012,29 @@ var sub = {
 				});
 				return true;
 			case "action_ksa":
-				sub.theConf = config.ksa.actions[sub.message.id];
-				if (sub.theConf.name == "paste") {//for action paste
-					sendResponse(sub.theConf);//error log, if none sendResponse
-					sub.checkPermission(["clipboardRead"], null, function () {
-						var domCB = document.createElement("textarea");
-						domCB.classList.add("su_cb_textarea");
-						document.body.appendChild(domCB);
-						domCB.focus();
-						document.execCommand("paste");
-						sub.theConf.paste = domCB.value;
-						sub.theConf.typeAction = "paste";
-						chrome.tabs.sendMessage(sender.tab.id, { type: "actionPaste", value: sub.theConf }, function (response) {
-							domCB.remove();
+				loadConfig().then(() => {
+					sub.theConf = config.ksa.actions[sub.message.id];
+					if (sub.theConf.name == "paste") {//for action paste
+						sendResponse(sub.theConf);//error log, if none sendResponse
+						sub.checkPermission(["clipboardRead"], null, function () {
+							var domCB = document.createElement("textarea");
+							domCB.classList.add("su_cb_textarea");
+							document.body.appendChild(domCB);
+							domCB.focus();
+							document.execCommand("paste");
+							sub.theConf.paste = domCB.value;
+							sub.theConf.typeAction = "paste";
+							chrome.tabs.sendMessage(sender.tab.id, { type: "actionPaste", value: sub.theConf }, function (response) {
+								domCB.remove();
+							});
 						});
-					});
-				} else {
-					console.log("s")
-					sendResponse(sub.theConf);
-				}
-				sub.initCurrent(sender, sub.theConf);
-				break
+					} else {
+						console.log("s")
+						sendResponse(sub.theConf);
+					}
+					sub.initCurrent(sender, sub.theConf);
+				});
+				return true;
 			case "action":
 				loadConfig().then(() => {
 					sub.theConf = getConf();
