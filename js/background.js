@@ -4724,16 +4724,18 @@ chrome.action.onClicked.addListener(function (tab) {
 	} else {
 		chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
 			sub.curTab = tabs[0];
-			chrome.tabs.sendMessage(tabs[0].id, { type: "icon" }, function (response) {
-				if (response && response.type == "action_icon") {
-					sub.message = response;
-					sub.extID = chrome.runtime.id ? chrome.runtime.id : null;
-					var theConf = config.icon.actions[0];
-					sub.theConf = theConf;
-					sub.initCurrent(null, sub.theConf);
-					console.log(sub.message)
-				}
-			});
+			if (sub.curTab.url.startsWith("http")) {
+				chrome.tabs.sendMessage(tabs[0].id, { type: "icon" }, function (response) {
+					if (response && response.type == "action_icon") {
+						sub.message = response;
+						sub.extID = chrome.runtime.id ? chrome.runtime.id : null;
+						var theConf = config.icon.actions[0];
+						sub.theConf = theConf;
+						sub.initCurrent(null, sub.theConf);
+						console.log(sub.message)
+					}
+				});
+			}
 		})
 	}
 })
@@ -4835,7 +4837,7 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
 chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
 	console.log(tabId);
 	sub.setIcon("normal", tabId, changeInfo, tab);
-	if (changeInfo.status == "complete") {
+	if (changeInfo.status == "complete" && tab.url.startsWith("http")) {
 		chrome.tabs.sendMessage(tabId, { type: "status" }, function (response) {
 			if (!response) {
 				sub.setIcon("warning", tabId, changeInfo, tab);
